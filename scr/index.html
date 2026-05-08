@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WARP Desktop</title>
+<style>
+  :root {
+    --bg:       #0a0a0f;
+    --bg2:      #12121a;
+    --bg3:      #1a1a26;
+    --accent:   #7c3aed;
+    --accent2:  #a855f7;
+    --glow:     rgba(124,58,237,0.35);
+    --text:     #e8e8f0;
+    --muted:    #6b6b85;
+    --border:   rgba(255,255,255,0.07);
+    --card:     #14141e;
+    --radius:   14px;
+    --titlebar: 38px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Segoe UI', 'Arial', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Titlebar ── */
+  #titlebar {
+    height: var(--titlebar);
+    background: rgba(10,10,15,0.95);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    -webkit-app-region: drag;
+    flex-shrink: 0;
+    gap: 10px;
+    user-select: none;
+  }
+  #titlebar .logo {
+    font-size: 15px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #a855f7, #7c3aed);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 2px;
+  }
+  #titlebar .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #22c55e; margin-right: 2px;
+    box-shadow: 0 0 6px #22c55e;
+    flex-shrink: 0;
+  }
+  #titlebar .status-dot.offline { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+  #titlebar .spacer { flex: 1; }
+  .win-btn {
+    -webkit-app-region: no-drag;
+    width: 28px; height: 28px;
+    border: none; border-radius: 7px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s;
+  }
+  .win-btn:hover { background: var(--bg3); color: var(--text); }
+  #btn-close:hover { background: #ef4444; color: #fff; }
+
+  /* ── Layout ── */
+  #app {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width: 200px;
+    background: var(--bg2);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 16px 0;
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+  .nav-section { padding: 0 14px 6px; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 10px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 9px;
+    padding: 9px 14px;
+    cursor: pointer;
+    border-radius: 0;
+    font-size: 13.5px;
+    color: var(--muted);
+    transition: all .15s;
+    border-right: 3px solid transparent;
+  }
+  .nav-item:hover { background: var(--bg3); color: var(--text); }
+  .nav-item.active { color: var(--accent2); border-right-color: var(--accent); background: rgba(124,58,237,0.1); }
+  .nav-item .icon { font-size: 15px; width: 20px; text-align: center; }
+
+  /* ── Main ── */
+  #main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+  }
+  #main::-webkit-scrollbar { width: 5px; }
+  #main::-webkit-scrollbar-track { background: transparent; }
+  #main::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 10px; }
+
+  /* ── Search / Header ── */
+  .page-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+  }
+  .page-title { font-size: 22px; font-weight: 700; flex: 1; }
+  .search-box {
+    position: relative;
+    flex-shrink: 0;
+  }
+  .search-box input {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 36px 8px 14px;
+    color: var(--text);
+    font-size: 13px;
+    width: 220px;
+    outline: none;
+    transition: border .2s;
+  }
+  .search-box input:focus { border-color: var(--accent); }
+  .search-box .icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 14px; pointer-events: none; }
+
+  /* ── Category pills ── */
+  .cats {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .cat-pill {
+    padding: 5px 13px;
+    border-radius: 20px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .15s;
+    color: var(--muted);
+    user-select: none;
+  }
+  .cat-pill:hover { border-color: var(--accent); color: var(--text); }
+  .cat-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* ── Games grid ── */
+  .games-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+    gap: 16px;
+  }
+  .game-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    cursor: pointer;
+    transition: all .2s;
+    position: relative;
+  }
+  .game-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 18px var(--glow);
+    transform: translateY(-3px);
+  }
+  .game-card .thumb {
+    width: 100%; aspect-ratio: 16/9;
+    object-fit: cover;
+    background: var(--bg3);
+    display: block;
+  }
+  .game-card .thumb-placeholder {
+    width: 100%; aspect-ratio: 16/9;
+    background: linear-gradient(135deg, var(--bg3), var(--bg2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px;
+  }
+  .game-card .info { padding: 10px 12px; }
+  .game-card .name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .game-card .tags { font-size: 11px; color: var(--muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .game-card .save-btn {
+    position: absolute; top: 8px; left: 8px;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 11px;
+    color: var(--text);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity .15s;
+    backdrop-filter: blur(6px);
+  }
+  .game-card:hover .save-btn { opacity: 1; }
+  .game-card .save-btn.saved { color: #a855f7; border-color: #a855f7; }
+  .game-card .offline-badge {
+    position: absolute; top: 8px; right: 8px;
+    background: rgba(124,58,237,0.85);
+    border-radius: 6px;
+    padding: 2px 7px;
+    font-size: 10px;
+    color: #fff;
+    backdrop-filter: blur(4px);
+  }
+
+  /* ── Empty / loading ── */
+  .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty .big { font-size: 48px; margin-bottom: 12px; }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--bg3);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    margin: 60px auto;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 22px;
+    font-size: 13px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    transition: transform .3s cubic-bezier(.175,.885,.32,1.275);
+    z-index: 999;
+    pointer-events: none;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── Offline notice ── */
+  .offline-banner {
+    background: rgba(239,68,68,0.12);
+    border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-size: 13px;
+    color: #fca5a5;
+    margin-bottom: 18px;
+    display: none;
+  }
+  .offline-banner.show { display: block; }
+</style>
+</head>
+<body>
+
+<!-- Titlebar -->
+<div id="titlebar">
+  <span class="logo">⚡ WARP</span>
+  <span style="font-size:11px;color:var(--muted)">Desktop</span>
+  <div id="status-dot" class="status-dot"></div>
+  <div class="spacer"></div>
+  <button class="win-btn" id="btn-min" title="מזעור">─</button>
+  <button class="win-btn" id="btn-max" title="הגדל">□</button>
+  <button class="win-btn" id="btn-close" title="סגור">✕</button>
+</div>
+
+<div id="app">
+  <!-- Sidebar -->
+  <nav id="sidebar">
+    <div class="nav-section">ניווט</div>
+    <div class="nav-item active" data-page="all">
+      <span class="icon">🎮</span> כל המשחקים
+    </div>
+    <div class="nav-item" data-page="offline">
+      <span class="icon">💾</span> שמורים אופליין
+      <span id="saved-count" style="margin-right:auto;background:var(--accent);border-radius:10px;padding:1px 7px;font-size:11px;display:none"></span>
+    </div>
+
+    <div class="nav-section" style="margin-top:16px">קטגוריות</div>
+    <div id="sidebar-cats"></div>
+  </nav>
+
+  <!-- Main -->
+  <main id="main">
+    <div id="offline-banner" class="offline-banner">
+      ⚠️ אין חיבור לאינטרנט – מציג משחקים שמורים מהקאש בלבד
+    </div>
+
+    <div id="page-all">
+      <div class="page-header">
+        <h1 class="page-title">כל המשחקים</h1>
+        <div class="search-box">
+          <input type="text" id="search" placeholder="חפש משחק...">
+          <span class="icon">🔍</span>
+        </div>
+      </div>
+      <div class="cats" id="cats-bar"></div>
+      <div id="games-container"><div class="spinner"></div></div>
+    </div>
+
+    <div id="page-offline" style="display:none">
+      <div class="page-header">
+        <h1 class="page-title">💾 משחקים שמורים אופליין</h1>
+      </div>
+      <div id="offline-games-container"></div>
+    </div>
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const CATEGORIES = [
+  { id: 'action',     label: '⚡ פעולה' },
+  { id: 'puzzle',     label: '🧩 פאזל' },
+  { id: 'arcade',     label: '👾 ארקייד' },
+  { id: 'racing',     label: '🏎️ מירוצים' },
+  { id: 'rpg',        label: '⚔️ RPG' },
+  { id: 'strategy',   label: '♟️ אסטרטגיה' },
+  { id: 'sports',     label: '⚽ ספורט' },
+  { id: 'shooter',    label: '🔫 יריות' },
+  { id: 'board',      label: '🎲 לוח' },
+  { id: 'survival',   label: '💀 הישרדות' },
+  { id: 'fun',        label: '🌟 כיפי' },
+  { id: 'adventure',  label: '🗺️ הרפתקה' },
+  { id: 'multiplayer',label: '👥 מרובה שחקנים' },
+];
+
+let allGames = [], savedGames = [], activeCat = 'all', searchQ = '', currentPage = 'all';
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function init() {
+  buildSidebarCats();
+  buildCatsBar();
+  setupNav();
+  setupWindowControls();
+  setupSearch();
+
+  savedGames = await window.warp.getSavedGames();
+  updateSavedCount();
+
+  const { games, source } = await window.warp.getGames();
+  allGames = Array.isArray(games) ? games : Object.values(games);
+  if (source === 'none' || source === 'cache') {
+    document.getElementById('offline-banner').classList.add('show');
+    document.getElementById('status-dot').classList.add('offline');
+  }
+  renderGames();
+}
+
+// ── Sidebar categories ────────────────────────────────────────────────────────
+function buildSidebarCats() {
+  const el = document.getElementById('sidebar-cats');
+  CATEGORIES.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'nav-item';
+    div.dataset.cat = c.id;
+    div.innerHTML = `<span class="icon">${c.label.split(' ')[0]}</span> ${c.label.split(' ').slice(1).join(' ')}`;
+    div.onclick = () => { activeCat = c.id; setPage('all'); updateCatActive(); renderGames(); };
+    el.appendChild(div);
+  });
+}
+
+function buildCatsBar() {
+  const el = document.getElementById('cats-bar');
+  const all = document.createElement('span');
+  all.className = 'cat-pill active'; all.textContent = '🎮 הכל'; all.dataset.cat = 'all';
+  all.onclick = () => { activeCat = 'all'; updateCatActive(); renderGames(); };
+  el.appendChild(all);
+  CATEGORIES.forEach(c => {
+    const s = document.createElement('span');
+    s.className = 'cat-pill'; s.textContent = c.label; s.dataset.cat = c.id;
+    s.onclick = () => { activeCat = c.id; updateCatActive(); renderGames(); };
+    el.appendChild(s);
+  });
+}
+
+function updateCatActive() {
+  document.querySelectorAll('.cat-pill').forEach(p => p.classList.toggle('active', p.dataset.cat === activeCat));
+  document.querySelectorAll('#sidebar-cats .nav-item').forEach(p => p.classList.toggle('active', p.dataset.cat === activeCat));
+}
+
+// ── Nav ───────────────────────────────────────────────────────────────────────
+function setupNav() {
+  document.querySelectorAll('[data-page]').forEach(el => {
+    el.onclick = () => setPage(el.dataset.page);
+  });
+}
+function setPage(p) {
+  currentPage = p;
+  document.getElementById('page-all').style.display     = p === 'all'     ? '' : 'none';
+  document.getElementById('page-offline').style.display = p === 'offline' ? '' : 'none';
+  document.querySelectorAll('.nav-item[data-page]').forEach(el => el.classList.toggle('active', el.dataset.page === p));
+  if (p === 'offline') renderOfflineGames();
+}
+
+// ── Search ────────────────────────────────────────────────────────────────────
+function setupSearch() {
+  document.getElementById('search').addEventListener('input', e => { searchQ = e.target.value; renderGames(); });
+}
+
+// ── Render games ──────────────────────────────────────────────────────────────
+function renderGames() {
+  let games = allGames;
+  if (activeCat !== 'all') games = games.filter(g => (g.categories || []).includes(activeCat));
+  if (searchQ) {
+    const q = searchQ.toLowerCase();
+    games = games.filter(g => (g.name || g.title || '').toLowerCase().includes(q) || (g.description || '').toLowerCase().includes(q));
+  }
+  const el = document.getElementById('games-container');
+  if (!games.length) { el.innerHTML = '<div class="empty"><div class="big">🎮</div>לא נמצאו משחקים</div>'; return; }
+  el.innerHTML = '';
+  const grid = document.createElement('div'); grid.className = 'games-grid';
+  games.forEach(g => grid.appendChild(makeCard(g)));
+  el.appendChild(grid);
+}
+
+function renderOfflineGames() {
+  const el = document.getElementById('offline-games-container');
+  if (!savedGames.length) { el.innerHTML = '<div class="empty"><div class="big">💾</div>עדיין לא שמרת משחקים אופליין<br><small style="margin-top:8px;display:block;font-size:13px">לחץ על ☁️ בכרטיס משחק כדי לשמור</small></div>'; return; }
+  el.innerHTML = '';
+  const grid = document.createElement('div'); grid.className = 'games-grid';
+  savedGames.forEach(g => grid.appendChild(makeCard(g, true)));
+  el.appendChild(grid);
+}
+
+function makeCard(g, isOfflinePage = false) {
+  const isSaved = savedGames.some(s => s.id === g.id);
+  const div = document.createElement('div');
+  div.className = 'game-card';
+  div.innerHTML = `
+    ${g.thumbnail ? `<img class="thumb" src="${g.thumbnail}" onerror="this.parentNode.querySelector('.thumb-placeholder').style.display='flex';this.remove()">` : ''}
+    <div class="thumb-placeholder" style="${g.thumbnail ? 'display:none' : ''}">🎮</div>
+    <div class="info">
+      <div class="name">${g.name || g.title || 'משחק'}</div>
+      <div class="tags">${(g.categories || []).map(c => CATEGORIES.find(x=>x.id===c)?.label || c).join(' · ') || 'ללא קטגוריה'}</div>
+    </div>
+    <button class="save-btn ${isSaved?'saved':''}" title="${isSaved?'הסר':'שמור אופליין'}">${isSaved?'✓ שמור':'☁️'}</button>
+    ${isSaved ? '<div class="offline-badge">📲 אופליין</div>' : ''}
+  `;
+  div.querySelector('.game-card, div').onclick = () => window.warp.openGame(g);
+  div.onclick = () => window.warp.openGame(g);
+  const saveBtn = div.querySelector('.save-btn');
+  saveBtn.onclick = async e => {
+    e.stopPropagation();
+    if (isSaved) {
+      await window.warp.removeSavedGame(g.id);
+      savedGames = await window.warp.getSavedGames();
+      updateSavedCount();
+      showToast('🗑️ הוסר מהמשחקים השמורים');
+      renderGames();
+      if (isOfflinePage) renderOfflineGames();
+    } else {
+      saveBtn.textContent = '⏳';
+      const res = await window.warp.saveGameOffline(g);
+      savedGames = await window.warp.getSavedGames();
+      updateSavedCount();
+      showToast('💾 ' + (res.msg || 'נשמר!'));
+      renderGames();
+    }
+  };
+  return div;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function updateSavedCount() {
+  const el = document.getElementById('saved-count');
+  el.textContent = savedGames.length;
+  el.style.display = savedGames.length ? '' : 'none';
+}
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── Window controls ───────────────────────────────────────────────────────────
+function setupWindowControls() {
+  document.getElementById('btn-min').onclick   = () => window.warp.windowMinimize();
+  document.getElementById('btn-max').onclick   = () => window.warp.windowMaximize();
+  document.getElementById('btn-close').onclick = () => window.warp.windowClose();
+}
+
+init();
+</script>
+</body>
+</html>
