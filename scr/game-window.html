@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>WARP – משחק</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root { --titlebar: 36px; }
+  body { background: #000; height: 100vh; overflow: hidden; display: flex; flex-direction: column; font-family: 'Segoe UI', sans-serif; }
+
+  #titlebar {
+    height: var(--titlebar);
+    background: #0a0a0f;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    display: flex; align-items: center; padding: 0 12px; gap: 10px;
+    -webkit-app-region: drag;
+    flex-shrink: 0;
+    user-select: none;
+  }
+  #game-title { font-size: 13px; color: #a0a0b0; flex:1; white-space: nowrap; overflow:hidden; text-overflow: ellipsis; }
+  .logo { font-size:13px; font-weight:800; background:linear-gradient(135deg,#a855f7,#7c3aed); -webkit-background-clip:text; -webkit-text-fill-color:transparent; letter-spacing:2px; }
+  .win-btn { -webkit-app-region:no-drag; width:28px; height:28px; border:none; border-radius:7px; background:transparent; color:#6b6b85; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+  .win-btn:hover { background:#1a1a26; color:#e8e8f0; }
+  #btn-close:hover { background:#ef4444; color:#fff; }
+
+  #game-frame {
+    flex: 1;
+    width: 100%; border: none;
+  }
+  #loading {
+    position: absolute; inset: var(--titlebar) 0 0 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: #000; color: #6b6b85; gap: 14px; font-size: 14px;
+  }
+  .spinner { width:36px; height:36px; border:3px solid #1a1a26; border-top-color:#7c3aed; border-radius:50%; animation:spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div id="titlebar">
+  <span class="logo">⚡</span>
+  <span id="game-title">טוען משחק...</span>
+  <button class="win-btn" id="btn-min">─</button>
+  <button class="win-btn" id="btn-max">□</button>
+  <button class="win-btn" id="btn-close">✕</button>
+</div>
+<div id="loading"><div class="spinner"></div><span>טוען משחק...</span></div>
+<webview id="game-frame" src="about:blank" allowpopups style="flex:1;width:100%"></webview>
+
+<script>
+  document.getElementById('btn-min').onclick   = () => window.warp.windowMinimize();
+  document.getElementById('btn-max').onclick   = () => window.warp.windowMaximize();
+  document.getElementById('btn-close').onclick = () => window.warp.windowClose();
+
+  const frame   = document.getElementById('game-frame');
+  const loading = document.getElementById('loading');
+  const title   = document.getElementById('game-title');
+
+  window.warp.onLoadGame(game => {
+    title.textContent = game.name || game.title || 'משחק';
+    document.title    = game.name || 'WARP';
+    frame.src = game.url;
+  });
+
+  frame.addEventListener('did-finish-load', () => { loading.style.display = 'none'; });
+  frame.addEventListener('did-fail-load', () => {
+    loading.innerHTML = `<div style="font-size:36px">❌</div><div>לא ניתן לטעון את המשחק</div><div style="font-size:12px;color:#555">ייתכן שהמשחק דורש חיבור לאינטרנט</div>`;
+  });
+</script>
+</body>
+</html>
