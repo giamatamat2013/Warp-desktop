@@ -46,10 +46,6 @@ function createWindow() {
   console.log('File exists:', require('fs').existsSync(indexPath));
   mainWindow.loadFile(indexPath).catch(err => console.error('loadFile error:', err));
 
-  if (process.env.NODE_ENV === 'development') {
-    mainWindow.webContents.openDevTools({ mode: 'detach' });
-  }
-
   mainWindow.webContents.on('did-fail-load', (e, code, desc) => {
     console.error('Failed to load:', code, desc, indexPath);
   });
@@ -74,9 +70,13 @@ app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(
 
 // ── IPC: games list ───────────────────────────────────────────────────────────
 ipcMain.handle('get-games', async () => {
-  // נסה לטעון מהאינטרנט תחילה, אם נכשל – מהקאש
-  return new Promise(resolve => {
+  // נסה לטעון מהאינטרנט תחילה, אם נכשל – השתמש בקאש
+  const fetchGames = (timeoutMs = 20000) => new Promise((resolve, reject) => {
     const req = https.get('https://giamatamat2013.github.io/Warp/games.json', res => {
+      if (res.statusCode !== 200) {
+        req.destroy();
+        return reject(new Error(`HTTP ${res.statusCode}`));
+      }
       let data = '';
       res.on('data', c => data += c);
       res.on('end', () => {
@@ -84,14 +84,26 @@ ipcMain.handle('get-games', async () => {
           const games = JSON.parse(data);
           fs.writeFileSync(GAMES_DB_PATH, data); // עדכן קאש
           resolve({ games, source: 'online' });
-        } catch {
-          resolve(loadCachedGames());
+        } catch (e) {
+          reject(e);
         }
       });
     });
-    req.setTimeout(5000, () => { req.destroy(); resolve(loadCachedGames()); });
-    req.on('error', () => resolve(loadCachedGames()));
+    req.setTimeout(timeoutMs, () => req.destroy(new Error('Request timeout')));
+    req.on('error', reject);
   });
+
+  try {
+    return await fetchGames();
+  } catch (firstError) {
+    console.warn('First games fetch failed:', firstError.message);
+    try {
+      return await fetchGames(25000);
+    } catch (secondError) {
+      console.warn('Second games fetch failed:', secondError.message);
+      return loadCachedGames();
+    }
+  }
 });
 
 function loadCachedGames() {
