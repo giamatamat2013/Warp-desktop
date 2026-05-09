@@ -55,13 +55,31 @@ function createWindow() {
     saveSettings({ ...loadSettings(), width: w, height: h });
   });
 
-  // Allow webviews to open games in new window
+  // ── Firebase: אפשר Google Auth popup, חסום שאר חלונות ──────────────────────
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (
+      url.startsWith('https://accounts.google.com') ||
+      url.startsWith('https://warp-games.firebaseapp.com/__/auth')
+    ) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          width: 500,
+          height: 650,
+          webPreferences: { nodeIntegration: false, contextIsolation: true }
+        }
+      };
+    }
     return { action: 'deny' };
   });
 }
 
 app.whenReady().then(() => {
+  // ── Firebase: אפשר permissions לכל בקשות Auth / Storage / Cookies ──────────
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    callback(true);
+  });
+
   createWindow();
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });

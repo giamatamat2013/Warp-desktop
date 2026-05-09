@@ -260,6 +260,124 @@
     display: none;
   }
   .offline-banner.show { display: block; }
+
+  /* ── User avatar (titlebar) ── */
+  .user-avatar {
+    -webkit-app-region: no-drag;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #fff;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+    user-select: none;
+  }
+  .user-avatar .anon-dot, .user-avatar .auth-dot {
+    position: absolute; bottom: -1px; right: -1px;
+    width: 8px; height: 8px; border-radius: 50%;
+    border: 1.5px solid var(--bg);
+  }
+  .user-avatar .anon-dot { background: #6b6b85; }
+  .user-avatar .auth-dot { background: #22c55e; }
+
+  /* ── User dropdown ── */
+  .user-dropdown {
+    position: absolute;
+    top: calc(var(--titlebar) + 4px);
+    left: 10px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 0;
+    min-width: 200px;
+    z-index: 500;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    display: none;
+  }
+  .user-dropdown.open { display: block; }
+  .ud-name { padding: 4px 16px; font-size: 13px; font-weight: 600; }
+  .ud-email { padding: 2px 16px 10px; font-size: 11px; color: var(--muted); border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+  .ud-btn {
+    display: block; width: 100%; text-align: right;
+    padding: 8px 16px; font-size: 13px;
+    background: none; border: none; color: var(--text);
+    cursor: pointer; transition: background .15s;
+  }
+  .ud-btn:hover { background: var(--bg3); }
+  .ud-btn.danger { color: #f87171; }
+
+  /* ── Auth modal ── */
+  .auth-modal-bg {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    z-index: 900;
+    display: none;
+    align-items: center; justify-content: center;
+  }
+  .auth-modal-bg.open { display: flex; }
+  .auth-modal {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 28px 28px 24px;
+    width: 360px;
+    position: relative;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  }
+  .auth-close {
+    position: absolute; top: 14px; left: 14px;
+    background: none; border: none; color: var(--muted);
+    font-size: 16px; cursor: pointer; line-height: 1;
+  }
+  .auth-close:hover { color: var(--text); }
+  .auth-logo { font-size: 22px; font-weight: 800; text-align: center; margin-bottom: 18px;
+    background: linear-gradient(135deg,#a855f7,#7c3aed); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .btn-google {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; padding: 10px; border-radius: 10px;
+    background: #fff; color: #222; font-size: 14px; font-weight: 500;
+    border: none; cursor: pointer; margin-bottom: 14px; transition: opacity .15s;
+  }
+  .btn-google:hover { opacity: .9; }
+  .auth-divider { text-align: center; font-size: 12px; color: var(--muted); margin-bottom: 14px; position: relative; }
+  .auth-divider::before, .auth-divider::after {
+    content:''; position:absolute; top:50%; width:42%; height:1px; background:var(--border);
+  }
+  .auth-divider::before { right:0; } .auth-divider::after { left:0; }
+  .auth-tabs { display:flex; gap:8px; margin-bottom:14px; }
+  .auth-tab {
+    flex:1; padding:7px; background:var(--bg3); border:1px solid var(--border);
+    border-radius:8px; color:var(--muted); font-size:13px; cursor:pointer; transition:all .15s;
+  }
+  .auth-tab.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .auth-field { margin-bottom:10px; }
+  .auth-field label { display:block; font-size:12px; color:var(--muted); margin-bottom:4px; }
+  .auth-field input {
+    width:100%; padding:9px 12px;
+    background:var(--bg3); border:1px solid var(--border); border-radius:9px;
+    color:var(--text); font-size:13px; outline:none; transition:border .2s;
+  }
+  .auth-field input:focus { border-color:var(--accent); }
+  .auth-submit {
+    width:100%; padding:10px; border-radius:10px;
+    background:var(--accent); border:none; color:#fff;
+    font-size:14px; font-weight:600; cursor:pointer;
+    margin-top:6px; transition:all .2s;
+  }
+  .auth-submit:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(124,58,237,.4); }
+  .auth-submit:disabled { opacity:.5; cursor:default; transform:none; }
+  .auth-err { color:#f87171; font-size:12px; margin-bottom:8px; display:none; }
+  .auth-anon {
+    display:block; text-align:center; margin-top:12px;
+    font-size:12px; color:var(--muted); cursor:pointer;
+    background:none; border:none; width:100%;
+  }
+  .auth-anon:hover { color:var(--text); }
+  .auth-forgot { background:none; border:none; color:var(--muted); font-size:11px; cursor:pointer; margin-top:4px; }
+  .auth-forgot:hover { color:var(--text); }
 </style>
 </head>
 <body>
@@ -270,9 +388,50 @@
   <span style="font-size:11px;color:var(--muted)">Desktop</span>
   <div id="status-dot" class="status-dot"></div>
   <div class="spacer"></div>
+  <div class="user-avatar" id="userAvatar" onclick="toggleDropdown()">
+    <span id="userInitial">?</span>
+    <span class="anon-dot" id="userDot"></span>
+  </div>
+  <div class="user-dropdown" id="userDropdown">
+    <div class="ud-name" id="udName">טוען...</div>
+    <div class="ud-email" id="udEmail"></div>
+    <button class="ud-btn" id="udAuthBtn" onclick="openAuth();closeDropdown()">🔐 כניסה / הרשמה</button>
+    <button class="ud-btn danger" id="udSignout" onclick="signOutUser()" style="display:none">🚪 התנתקות</button>
+  </div>
   <button class="win-btn" id="btn-min" title="מזעור">─</button>
   <button class="win-btn" id="btn-max" title="הגדל">□</button>
   <button class="win-btn" id="btn-close" title="סגור">✕</button>
+</div>
+
+<!-- Auth Modal -->
+<div class="auth-modal-bg" id="authBg" onclick="if(event.target===this)closeAuth()">
+  <div class="auth-modal">
+    <button class="auth-close" onclick="closeAuth()">✕</button>
+    <div class="auth-logo">⚡ WARP</div>
+    <button class="btn-google" onclick="signInWithGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      התחברות עם Google
+    </button>
+    <div class="auth-divider">או עם מייל</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin" onclick="switchTab('login')">התחברות</button>
+      <button class="auth-tab" id="tabRegister" onclick="switchTab('register')">הרשמה</button>
+    </div>
+    <div id="authErr" class="auth-err"></div>
+    <div id="loginForm">
+      <div class="auth-field"><label>אימייל</label><input type="email" id="loginEmail" placeholder="you@example.com"></div>
+      <div class="auth-field"><label>סיסמה</label><input type="password" id="loginPass" placeholder="••••••••"></div>
+      <button class="auth-submit" id="loginBtn" onclick="signInEmail()">כניסה</button>
+      <button class="auth-forgot" onclick="forgotPassword()">שכחתי סיסמה</button>
+    </div>
+    <div id="registerForm" style="display:none">
+      <div class="auth-field"><label>שם תצוגה</label><input type="text" id="regName" placeholder="השם שלך"></div>
+      <div class="auth-field"><label>אימייל</label><input type="email" id="regEmail" placeholder="you@example.com"></div>
+      <div class="auth-field"><label>סיסמה</label><input type="password" id="regPass" placeholder="לפחות 6 תווים"></div>
+      <button class="auth-submit" id="registerBtn" onclick="registerEmail()">יצירת חשבון</button>
+    </div>
+    <button class="auth-anon" onclick="continueAnonymously()">המשך כאורח</button>
+  </div>
 </div>
 
 <div id="app">
@@ -320,6 +479,228 @@
 
 <div id="toast"></div>
 
+<!-- ==================== FIREBASE STUBS ==================== -->
+<script>
+// Stubs so onclick= attrs don't throw before Firebase module loads
+['openAuth','closeAuth','switchTab','toggleDropdown','closeDropdown',
+ 'signInWithGoogle','signInEmail','registerEmail','continueAnonymously',
+ 'signOutUser','forgotPassword'
+].forEach(fn => {
+  if (!window[fn]) window[fn] = (...args) => {
+    document.addEventListener('_warpReady', () => window[fn](...args), { once: true });
+  };
+});
+</script>
+
+<!-- ==================== FIREBASE SDK ==================== -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getAnalytics, logEvent } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js';
+import {
+  getAuth, onAuthStateChanged, signInAnonymously,
+  signInWithPopup, GoogleAuthProvider,
+  createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  updateProfile, signOut, sendPasswordResetEmail
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import {
+  getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import {
+  getDatabase, ref, get
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAV04ASEGe-b_7UnmNjpOTH7RMwFF-I0O0",
+  authDomain: "warp-games.firebaseapp.com",
+  databaseURL: "https://warp-games-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "warp-games",
+  storageBucket: "warp-games.firebasestorage.app",
+  messagingSenderId: "299502091770",
+  appId: "1:299502091770:web:582593b7b31884bfbcf843",
+  measurementId: "G-N3JTRQPYRV"
+};
+
+const fbApp      = initializeApp(firebaseConfig);
+const analytics  = getAnalytics(fbApp);
+const auth       = getAuth(fbApp);
+const db         = getFirestore(fbApp);
+const rtdb       = getDatabase(fbApp);
+const googleProvider = new GoogleAuthProvider();
+
+window._firebase = {
+  auth, db, rtdb, ref, get, analytics, logEvent, googleProvider,
+  signInAnonymously, signInWithPopup,
+  createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  updateProfile, signOut, sendPasswordResetEmail,
+  doc, getDoc, setDoc, deleteDoc, collection, getDocs
+};
+
+// ── Cloud localStorage proxy ─────────────────────────────────────────────────
+const _lsCache = {};
+
+async function loadCloudStorage(uid) {
+  try {
+    const col = collection(db, 'users', uid, 'localStorage');
+    const snap = await getDocs(col);
+    snap.forEach(d => { _lsCache[d.id] = d.data().value; });
+  } catch(e) { console.warn('[WARP Cloud] Load failed', e); }
+}
+
+const cloudLS = {
+  setItem(key, value) {
+    value = String(value);
+    _lsCache[key] = value;
+    const uid = auth.currentUser?.uid;
+    if (uid) {
+      setDoc(doc(db, 'users', uid, 'localStorage', key), { value })
+        .catch(e => console.warn('[WARP Cloud] setItem failed', e));
+    }
+  },
+  getItem(key) { return (key in _lsCache) ? _lsCache[key] : null; },
+  removeItem(key) {
+    delete _lsCache[key];
+    const uid = auth.currentUser?.uid;
+    if (uid) {
+      deleteDoc(doc(db, 'users', uid, 'localStorage', key))
+        .catch(e => console.warn('[WARP Cloud] removeItem failed', e));
+    }
+  },
+  clear() { Object.keys(_lsCache).forEach(k => cloudLS.removeItem(k)); },
+  key(i) { return Object.keys(_lsCache)[i] ?? null; },
+  get length() { return Object.keys(_lsCache).length; }
+};
+
+// ── Auth state ────────────────────────────────────────────────────────────────
+onAuthStateChanged(auth, async user => {
+  window._currentUser = user;
+  if (user) {
+    if (!user.isAnonymous) await loadCloudStorage(user.uid);
+
+    const isAnon  = user.isAnonymous;
+    const name    = user.displayName || (isAnon ? 'אורח' : user.email?.split('@')[0] || 'משתמש');
+    const initial = name[0].toUpperCase();
+
+    document.getElementById('userInitial').textContent = initial;
+    const dot = document.getElementById('userDot');
+    dot.className = isAnon ? 'anon-dot' : 'auth-dot';
+    document.getElementById('udName').textContent  = name;
+    document.getElementById('udEmail').textContent = isAnon ? 'מצב אורח' : (user.email || '');
+    document.getElementById('udAuthBtn').style.display  = isAnon ? '' : 'none';
+    document.getElementById('udSignout').style.display  = isAnon ? 'none' : '';
+
+    logEvent(analytics, 'login', { method: isAnon ? 'anonymous' : user.providerData[0]?.providerId, platform: 'desktop' });
+  } else {
+    signInAnonymously(auth).catch(e => console.error('[WARP Auth]', e));
+  }
+});
+
+// ── Auth functions ────────────────────────────────────────────────────────────
+window.openAuth  = () => { document.getElementById('authBg').classList.add('open'); clearAuthErr(); };
+window.closeAuth = () => { document.getElementById('authBg').classList.remove('open'); };
+
+window.toggleDropdown = () => document.getElementById('userDropdown').classList.toggle('open');
+window.closeDropdown  = () => document.getElementById('userDropdown').classList.remove('open');
+document.addEventListener('click', e => {
+  if (!e.target.closest('#userAvatar') && !e.target.closest('#userDropdown'))
+    document.getElementById('userDropdown').classList.remove('open');
+});
+
+window.switchTab = (tab) => {
+  document.getElementById('loginForm').style.display    = tab === 'login'    ? '' : 'none';
+  document.getElementById('registerForm').style.display = tab === 'register' ? '' : 'none';
+  document.getElementById('tabLogin').classList.toggle('active',    tab === 'login');
+  document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
+  clearAuthErr();
+};
+
+window.signInWithGoogle = async () => {
+  clearAuthErr();
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    const isNew = result._tokenResponse?.isNewUser;
+    logEvent(analytics, isNew ? 'sign_up' : 'login', { method: 'google.com', platform: 'desktop' });
+    closeAuth();
+    showToast(isNew ? '🎉 ברוך הבא ל-WARP!' : '✅ התחברת בהצלחה עם Google!');
+  } catch(e) { showAuthErr(formatErr(e)); }
+};
+
+window.signInEmail = async () => {
+  clearAuthErr();
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  if (!email || !pass) return showAuthErr('נא למלא אימייל וסיסמה');
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'מתחבר...';
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+    logEvent(analytics, 'login', { method: 'email', platform: 'desktop' });
+    closeAuth(); showToast('✅ ברוך הבא!');
+  } catch(e) { showAuthErr(formatErr(e)); }
+  finally { btn.disabled = false; btn.textContent = 'כניסה'; }
+};
+
+window.forgotPassword = async () => {
+  const email = document.getElementById('loginEmail').value.trim();
+  if (!email) return showAuthErr('הכנס את האימייל שלך כדי לאפס סיסמה');
+  try {
+    await sendPasswordResetEmail(auth, email);
+    showToast('📧 נשלח מייל לאיפוס סיסמה!');
+    clearAuthErr();
+  } catch(e) { showAuthErr(formatErr(e)); }
+};
+
+window.registerEmail = async () => {
+  clearAuthErr();
+  const name  = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const pass  = document.getElementById('regPass').value;
+  if (!name || !email || !pass) return showAuthErr('נא למלא את כל השדות');
+  if (pass.length < 6) return showAuthErr('סיסמה חייבת להיות לפחות 6 תווים');
+  const btn = document.getElementById('registerBtn');
+  btn.disabled = true; btn.textContent = 'יוצר חשבון...';
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    await updateProfile(cred.user, { displayName: name });
+    logEvent(analytics, 'sign_up', { method: 'email', platform: 'desktop' });
+    closeAuth(); showToast('🎉 החשבון נוצר בהצלחה!');
+  } catch(e) { showAuthErr(formatErr(e)); }
+  finally { btn.disabled = false; btn.textContent = 'יצירת חשבון'; }
+};
+
+window.continueAnonymously = async () => {
+  if (!auth.currentUser) await signInAnonymously(auth);
+  closeAuth(); showToast('👤 נכנסת כאורח');
+};
+
+window.signOutUser = async () => {
+  await signOut(auth);
+  Object.keys(_lsCache).forEach(k => delete _lsCache[k]);
+  closeDropdown();
+  showToast('👋 התנתקת');
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function formatErr(e) {
+  const map = {
+    'auth/user-not-found':      'לא נמצא משתמש עם אימייל זה',
+    'auth/wrong-password':      'סיסמה שגויה',
+    'auth/email-already-in-use':'האימייל כבר בשימוש',
+    'auth/invalid-email':       'אימייל לא תקין',
+    'auth/weak-password':       'הסיסמה חלשה מדי',
+    'auth/popup-closed-by-user':'חלון ההתחברות נסגר',
+    'auth/invalid-credential':  'פרטי כניסה שגויים',
+  };
+  return map[e.code] || e.message;
+}
+function showAuthErr(msg) {
+  const el = document.getElementById('authErr');
+  el.textContent = msg; el.style.display = '';
+}
+function clearAuthErr() { document.getElementById('authErr').style.display = 'none'; }
+
+document.dispatchEvent(new Event('_warpReady'));
+</script>
+
 <script>
 const CATEGORIES = [
   { id: 'action',     label: '⚡ פעולה' },
@@ -349,6 +730,11 @@ async function init() {
 
   savedGames = await window.warp.getSavedGames();
   updateSavedCount();
+
+  // Wait for Firebase to be ready if needed
+  if (!window._firebase) {
+    await new Promise(res => document.addEventListener('_warpReady', res, { once: true }));
+  }
 
   const { games, source } = await window.warp.getGames();
   allGames = Array.isArray(games) ? games : Object.values(games);
@@ -450,7 +836,12 @@ function makeCard(g, isOfflinePage = false) {
     ${isSaved ? '<div class="offline-badge">📲 אופליין</div>' : ''}
   `;
   div.querySelector('.game-card, div').onclick = () => window.warp.openGame(g);
-  div.onclick = () => window.warp.openGame(g);
+  div.onclick = () => {
+    if (window._firebase) {
+      window._firebase.logEvent(window._firebase.analytics, 'game_open', { game_id: g.id, game_name: g.name || g.title, platform: 'desktop' });
+    }
+    window.warp.openGame(g);
+  };
   const saveBtn = div.querySelector('.save-btn');
   saveBtn.onclick = async e => {
     e.stopPropagation();
