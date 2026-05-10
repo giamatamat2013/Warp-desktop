@@ -7,13 +7,17 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
+    "build:win": "electron-builder --win --x64",
+    "build:linux": "electron-builder --linux --x64",
     "build": "electron-builder --win --x64"
   },
   "build": {
     "appId": "com.warp.desktop",
     "productName": "WARP Desktop",
     "copyright": "© 2025 WARP",
-    "directories": { "output": "dist" },
+    "directories": {
+      "output": "dist"
+    },
     "files": [
       "main.js",
       "preload.js",
@@ -24,8 +28,18 @@
     "win": {
       "icon": "assets/icon.ico",
       "target": [
-        { "target": "nsis",     "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "nsis": {
@@ -38,10 +52,36 @@
     },
     "portable": {
       "artifactName": "WARP-Portable-${version}.exe"
+    },
+    "linux": {
+      "icon": "assets/icon.png",
+      "category": "Game",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-${version}.${ext}"
+    },
+    "appImage": {
+      "artifactName": "WARP-Portable-${version}.AppImage"
+    },
+    "deb": {
+      "artifactName": "WARP-Setup-${version}.deb"
     }
   },
   "devDependencies": {
     "electron": "^28.0.0",
-    "electron-builder": "^25.0.0"
+    "electron-builder": "^25.0.0",
+    "png-to-ico": "^3.0.1"
   }
 }
