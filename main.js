@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, session, dialog, Menu, Tray, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, session, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
@@ -218,15 +218,22 @@ ipcMain.handle('remove-saved-game', (event, gameId) => {
 });
 
 // ── IPC: window controls ──────────────────────────────────────────────────────
-ipcMain.handle('window-minimize', () => mainWindow.minimize());
-ipcMain.handle('window-maximize', () => { mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize(); });
-ipcMain.handle('window-close',    () => mainWindow.close());
-ipcMain.handle('is-maximized',    () => mainWindow.isMaximized());
+// BrowserWindow.fromWebContents(event.sender) מחזיר את החלון הנכון —
+// כך חלון משחק סוגר את עצמו ולא את החלון הראשי.
+ipcMain.handle('window-minimize', (event) => BrowserWindow.fromWebContents(event.sender)?.minimize());
+ipcMain.handle('window-maximize', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win) return;
+  win.isMaximized() ? win.unmaximize() : win.maximize();
+});
+ipcMain.handle('window-close', (event) => BrowserWindow.fromWebContents(event.sender)?.close());
+ipcMain.handle('is-maximized', (event) => BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false);
 
 // ── IPC: open game ────────────────────────────────────────────────────────────
 ipcMain.handle('open-game-window', (event, game) => {
   const win = new BrowserWindow({
-    width: 1100, height: 750,
+    width: 1280, height: 800,
+    minWidth: 800, minHeight: 600,
     title: game.name,
     backgroundColor: '#000',
     frame: false,
@@ -234,14 +241,33 @@ ipcMain.handle('open-game-window', (event, game) => {
       preload: path.join(__dirname, 'preload-game.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      webviewTag: true,
+      webviewTag: false,      // לא צריך webview יותר
+      webSecurity: false,     // מבטל חסימת X-Frame-Options ב-iframe
     }
   });
+
+  // ── מחק headers שחוסמים embedding (X-Frame-Options, CSP) ──────────────────
+  win.webContents.session.webRequest.onHeadersReceived({ urls: ['*://*/*'] }, (details, callback) => {
+    const headers = { ...details.responseHeaders };
+    // מחק headers שמונעים טעינה ב-iframe
+    delete headers['x-frame-options'];
+    delete headers['X-Frame-Options'];
+    delete headers['content-security-policy'];
+    delete headers['Content-Security-Policy'];
+    delete headers['x-content-type-options'];
+    callback({ responseHeaders: headers });
+  });
+
   win.loadFile(path.join(__dirname, 'src', 'game-window.html'));
   win.webContents.on('did-finish-load', () => {
     win.webContents.send('load-game', game);
   });
   return true;
+});
+
+// ── IPC: פתח URL בדפדפן חיצוני ───────────────────────────────────────────────
+ipcMain.handle('open-external', (event, url) => {
+  shell.openExternal(url);
 });
 
 // ── Helper: download file ─────────────────────────────────────────────────────

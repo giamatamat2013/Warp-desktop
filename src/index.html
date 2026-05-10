@@ -220,6 +220,29 @@
     backdrop-filter: blur(4px);
   }
 
+  /* ── כרטיס לא זמין (אופליין, לא הורד) ── */
+  .game-card.unavailable {
+    opacity: 0.38;
+    cursor: not-allowed;
+    pointer-events: none;
+    filter: grayscale(1);
+  }
+  .game-card.unavailable:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: var(--border);
+  }
+  .game-card .unavailable-badge {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.55);
+    font-size: 12px;
+    color: #aaa;
+    gap: 5px;
+    pointer-events: none;
+    backdrop-filter: blur(1px);
+  }
+
   /* ── Empty / loading ── */
   .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
   .empty .big { font-size: 48px; margin-bottom: 12px; }
@@ -738,11 +761,18 @@ async function init() {
 
   const { games, source } = await window.warp.getGames();
   allGames = Array.isArray(games) ? games : Object.values(games);
-  if (source === 'none' || source === 'cache') {
+
+  const isOffline = (source === 'none' || source === 'cache');
+  window._isOffline = isOffline;
+
+  if (isOffline) {
     document.getElementById('offline-banner').classList.add('show');
     document.getElementById('status-dot').classList.add('offline');
+    // פתח ישירות לדף האופליין
+    setPage('offline');
+  } else {
+    renderGames();
   }
-  renderGames();
 }
 
 // ── Sidebar categories ────────────────────────────────────────────────────────
@@ -814,53 +844,78 @@ function renderGames() {
 
 function renderOfflineGames() {
   const el = document.getElementById('offline-games-container');
-  if (!savedGames.length) { el.innerHTML = '<div class="empty"><div class="big">💾</div>עדיין לא שמרת משחקים אופליין<br><small style="margin-top:8px;display:block;font-size:13px">לחץ על ☁️ בכרטיס משחק כדי לשמור</small></div>'; return; }
+
+  // אם אופליין — הצג את כל המשחקים, אפורים אלה שלא הורדו
+  if (window._isOffline && allGames.length) {
+    el.innerHTML = '';
+    const info = document.createElement('div');
+    info.style.cssText = 'font-size:12px;color:var(--muted);margin-bottom:16px;padding:10px 14px;background:var(--bg3);border-radius:10px;border:1px solid var(--border);';
+    info.textContent = '🔌 אין חיבור לאינטרנט — רק המשחקים השמורים זמינים';
+    el.appendChild(info);
+    const grid = document.createElement('div'); grid.className = 'games-grid';
+    allGames.forEach(g => {
+      const isSaved = savedGames.some(s => s.id === g.id);
+      grid.appendChild(makeCard(g, true, !isSaved)); // unavailable=true אם לא שמור
+    });
+    el.appendChild(grid);
+    return;
+  }
+
+  // מצב רגיל — רק המשחקים השמורים
+  if (!savedGames.length) {
+    el.innerHTML = '<div class="empty"><div class="big">💾</div>עדיין לא שמרת משחקים אופליין<br><small style="margin-top:8px;display:block;font-size:13px">לחץ על ☁️ בכרטיס משחק כדי לשמור</small></div>';
+    return;
+  }
   el.innerHTML = '';
   const grid = document.createElement('div'); grid.className = 'games-grid';
   savedGames.forEach(g => grid.appendChild(makeCard(g, true)));
   el.appendChild(grid);
 }
 
-function makeCard(g, isOfflinePage = false) {
+function makeCard(g, isOfflinePage = false, unavailable = false) {
   const isSaved = savedGames.some(s => s.id === g.id);
   const div = document.createElement('div');
-  div.className = 'game-card';
+  div.className = 'game-card' + (unavailable ? ' unavailable' : '');
   div.innerHTML = `
     ${g.thumbnail ? `<img class="thumb" src="${g.thumbnail}" onerror="this.parentNode.querySelector('.thumb-placeholder').style.display='flex';this.remove()">` : ''}
     <div class="thumb-placeholder" style="${g.thumbnail ? 'display:none' : ''}">🎮</div>
+    ${unavailable ? '<div class="unavailable-badge">🔌 לא זמין אופליין</div>' : ''}
     <div class="info">
       <div class="name">${g.name || g.title || 'משחק'}</div>
       <div class="tags">${(g.categories || []).map(c => CATEGORIES.find(x=>x.id===c)?.label || c).join(' · ') || 'ללא קטגוריה'}</div>
     </div>
-    <button class="save-btn ${isSaved?'saved':''}" title="${isSaved?'הסר':'שמור אופליין'}">${isSaved?'✓ שמור':'☁️'}</button>
-    ${isSaved ? '<div class="offline-badge">📲 אופליין</div>' : ''}
+    ${!unavailable ? `<button class="save-btn ${isSaved?'saved':''}" title="${isSaved?'הסר':'שמור אופליין'}">${isSaved?'✓ שמור':'☁️'}</button>` : ''}
+    ${isSaved && !unavailable ? '<div class="offline-badge">📲 אופליין</div>' : ''}
   `;
-  div.querySelector('.game-card, div').onclick = () => window.warp.openGame(g);
-  div.onclick = () => {
-    if (window._firebase) {
-      window._firebase.logEvent(window._firebase.analytics, 'game_open', { game_id: g.id, game_name: g.name || g.title, platform: 'desktop' });
+  if (!unavailable) {
+    div.onclick = () => {
+      if (window._firebase) {
+        window._firebase.logEvent(window._firebase.analytics, 'game_open', { game_id: g.id, game_name: g.name || g.title, platform: 'desktop' });
+      }
+      window.warp.openGame(g);
+    };
+    const saveBtn = div.querySelector('.save-btn');
+    if (saveBtn) {
+      saveBtn.onclick = async e => {
+        e.stopPropagation();
+        if (isSaved) {
+          await window.warp.removeSavedGame(g.id);
+          savedGames = await window.warp.getSavedGames();
+          updateSavedCount();
+          showToast('🗑️ הוסר מהמשחקים השמורים');
+          renderGames();
+          if (isOfflinePage) renderOfflineGames();
+        } else {
+          saveBtn.textContent = '⏳';
+          const res = await window.warp.saveGameOffline(g);
+          savedGames = await window.warp.getSavedGames();
+          updateSavedCount();
+          showToast('💾 ' + (res.msg || 'נשמר!'));
+          renderGames();
+        }
+      };
     }
-    window.warp.openGame(g);
-  };
-  const saveBtn = div.querySelector('.save-btn');
-  saveBtn.onclick = async e => {
-    e.stopPropagation();
-    if (isSaved) {
-      await window.warp.removeSavedGame(g.id);
-      savedGames = await window.warp.getSavedGames();
-      updateSavedCount();
-      showToast('🗑️ הוסר מהמשחקים השמורים');
-      renderGames();
-      if (isOfflinePage) renderOfflineGames();
-    } else {
-      saveBtn.textContent = '⏳';
-      const res = await window.warp.saveGameOffline(g);
-      savedGames = await window.warp.getSavedGames();
-      updateSavedCount();
-      showToast('💾 ' + (res.msg || 'נשמר!'));
-      renderGames();
-    }
-  };
+  }
   return div;
 }
 

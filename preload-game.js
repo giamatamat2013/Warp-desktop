@@ -4,5 +4,6 @@ contextBridge.exposeInMainWorld('warp', {
   windowClose:    () => ipcRenderer.invoke('window-close'),
   windowMinimize: () => ipcRenderer.invoke('window-minimize'),
   windowMaximize: () => ipcRenderer.invoke('window-maximize'),
-  onLoadGame: (cb) => ipcRenderer.on('load-game', (_, game) => cb(game)),
+  openExternal:   (url) => ipcRenderer.invoke('open-external', url),
+  onLoadGame:     (cb) => ipcRenderer.on('load-game', (_, game) => cb(game)),
 });
