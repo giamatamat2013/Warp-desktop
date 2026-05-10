@@ -14,6 +14,9 @@ const SETTINGS_PATH   = path.join(USER_DATA, 'settings.json');
 
 [GAMES_CACHE_DIR].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
 
+// ── Firebase Realtime Database URL ────────────────────────────────────────────
+const FIREBASE_RTDB_URL = 'https://warp-games-default-rtdb.europe-west1.firebasedatabase.app';
+
 // ── הגדרות ──────────────────────────────────────────────────────────────────
 function loadSettings() {
   try { return JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8')); } catch { return {}; }
@@ -75,7 +78,6 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  // ── Firebase: אפשר permissions לכל בקשות Auth / Storage / Cookies ──────────
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
     callback(true);
   });
@@ -86,11 +88,12 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 
-// ── IPC: games list ───────────────────────────────────────────────────────────
+// ── IPC: games list (Firebase Realtime Database) ──────────────────────────────
 ipcMain.handle('get-games', async () => {
-  // נסה לטעון מהאינטרנט תחילה, אם נכשל – השתמש בקאש
-  const fetchGames = (timeoutMs = 20000) => new Promise((resolve, reject) => {
-    const req = https.get('https://giamatamat2013.github.io/Warp/games.json', res => {
+  // Firebase RTDB REST API: GET /games.json מחזיר אובייקט עם כל המשחקים
+  const fetchFromFirebase = (timeoutMs = 20000) => new Promise((resolve, reject) => {
+    const url = `${FIREBASE_RTDB_URL}/games.json`;
+    const req = https.get(url, res => {
       if (res.statusCode !== 200) {
         req.destroy();
         return reject(new Error(`HTTP ${res.statusCode}`));
@@ -99,8 +102,18 @@ ipcMain.handle('get-games', async () => {
       res.on('data', c => data += c);
       res.on('end', () => {
         try {
-          const games = JSON.parse(data);
-          fs.writeFileSync(GAMES_DB_PATH, data); // עדכן קאש
+          const val = JSON.parse(data);
+          if (!val) return reject(new Error('אין נתונים ב-Firebase תחת /games'));
+
+          // Firebase מחזיר אובייקט של {key: game}, ממיר למערך בדיוק כמו ה-Web
+          const games = Array.isArray(val)
+            ? val.filter(Boolean)
+            : Object.values(val);
+
+          if (!games.length) return reject(new Error('רשימת המשחקים ריקה'));
+
+          // שמור קאש מקומי
+          fs.writeFileSync(GAMES_DB_PATH, JSON.stringify(games, null, 2));
           resolve({ games, source: 'online' });
         } catch (e) {
           reject(e);
@@ -112,13 +125,13 @@ ipcMain.handle('get-games', async () => {
   });
 
   try {
-    return await fetchGames();
+    return await fetchFromFirebase();
   } catch (firstError) {
-    console.warn('First games fetch failed:', firstError.message);
+    console.warn('First Firebase fetch failed:', firstError.message);
     try {
-      return await fetchGames(25000);
+      return await fetchFromFirebase(25000);
     } catch (secondError) {
-      console.warn('Second games fetch failed:', secondError.message);
+      console.warn('Second Firebase fetch failed:', secondError.message);
       return loadCachedGames();
     }
   }
@@ -133,6 +146,44 @@ function loadCachedGames() {
   }
 }
 
+// ── IPC: רישום פתיחת משחק ב-Firebase (game_opens) ────────────────────────────
+ipcMain.handle('track-game-open', async (event, gameId) => {
+  try {
+    const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const safeId = gameId.replace(/[.#$[\]]/g, '_');
+    const url = `${FIREBASE_RTDB_URL}/game_opens/${safeId}/${today}.json`;
+
+    // קריאה + עדכון (transaction-like עם REST)
+    const currentVal = await new Promise((resolve, reject) => {
+      https.get(url, res => {
+        let data = '';
+        res.on('data', c => data += c);
+        res.on('end', () => resolve(JSON.parse(data) || 0));
+      }).on('error', reject);
+    });
+
+    const newVal = (currentVal || 0) + 1;
+    await new Promise((resolve, reject) => {
+      const body = JSON.stringify(newVal);
+      const urlParsed = new URL(url);
+      const req = https.request({
+        hostname: urlParsed.hostname,
+        path: urlParsed.pathname,
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+      }, res => { res.resume(); resolve(); });
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
+
+    return { ok: true };
+  } catch (e) {
+    console.warn('[WARP] track-game-open error:', e.message);
+    return { ok: false };
+  }
+});
+
 // ── IPC: saved games (אופליין) ────────────────────────────────────────────────
 ipcMain.handle('get-saved-games', () => {
   try { return JSON.parse(fs.readFileSync(SAVED_GAMES_PATH, 'utf8')); } catch { return []; }
@@ -142,7 +193,6 @@ ipcMain.handle('save-game-offline', async (event, game) => {
   const saved = (() => { try { return JSON.parse(fs.readFileSync(SAVED_GAMES_PATH, 'utf8')); } catch { return []; } })();
   if (saved.find(g => g.id === game.id)) return { ok: true, msg: 'כבר שמור' };
 
-  // הורד את העמוד הראשי של המשחק (HTML)
   const cacheDir = path.join(GAMES_CACHE_DIR, game.id);
   fs.mkdirSync(cacheDir, { recursive: true });
 
@@ -152,7 +202,6 @@ ipcMain.handle('save-game-offline', async (event, game) => {
     fs.writeFileSync(SAVED_GAMES_PATH, JSON.stringify(saved, null, 2));
     return { ok: true, msg: 'נשמר!' };
   } catch (e) {
-    // שמור גם אם ה-HTML לא הורד (משחקים שמשתמשים ב-iframe חיצוני)
     saved.push({ ...game, cachedAt: Date.now(), localPath: null });
     fs.writeFileSync(SAVED_GAMES_PATH, JSON.stringify(saved, null, 2));
     return { ok: true, msg: 'נוסף לרשימה (המשחק דורש אינטרנט להפעלה)' };
@@ -163,7 +212,6 @@ ipcMain.handle('remove-saved-game', (event, gameId) => {
   let saved = (() => { try { return JSON.parse(fs.readFileSync(SAVED_GAMES_PATH, 'utf8')); } catch { return []; } })();
   saved = saved.filter(g => g.id !== gameId);
   fs.writeFileSync(SAVED_GAMES_PATH, JSON.stringify(saved, null, 2));
-  // מחק קאש
   const cacheDir = path.join(GAMES_CACHE_DIR, gameId);
   if (fs.existsSync(cacheDir)) fs.rmSync(cacheDir, { recursive: true, force: true });
   return { ok: true };
