@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "WARP Desktop – משחקי חינם בלי דפדפן",
   "main": "main.js",
-  "author": "WARP",
+  "author": {
+    "name": "WARP",
+    "email": "warp@warp.com"
+  },
   "license": "MIT",
   "scripts": {
     "start": "electron .",
@@ -26,19 +29,14 @@
       "assets/**/*"
     ],
     "win": {
-      "icon": "assets/icon.ico",
       "target": [
         {
           "target": "nsis",
-          "arch": [
-            "x64"
-          ]
+          "arch": ["x64"]
         },
         {
           "target": "portable",
-          "arch": [
-            "x64"
-          ]
+          "arch": ["x64"]
         }
       ]
     },
@@ -54,26 +52,14 @@
       "artifactName": "WARP-Portable-${version}.exe"
     },
     "linux": {
-      "icon": "assets/icon.png",
       "category": "Game",
       "target": [
         {
-          "target": "AppImage",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
           "target": "deb",
-          "arch": [
-            "x64"
-          ]
+          "arch": ["x64"]
         }
       ],
       "artifactName": "${productName}-${version}.${ext}"
-    },
-    "appImage": {
-      "artifactName": "WARP-Portable-${version}.AppImage"
     },
     "deb": {
       "artifactName": "WARP-Setup-${version}.deb"
