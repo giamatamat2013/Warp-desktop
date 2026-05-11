@@ -84,6 +84,10 @@ app.whenReady().then(() => {
 
   createWindow();
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+
+  // בדיקת עדכונים ועדכון משחקים אופליין בכל הפעלה
+  checkForUpdates();
+  refreshSavedGames();
 });
 
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
@@ -269,6 +273,55 @@ ipcMain.handle('open-game-window', (event, game) => {
 ipcMain.handle('open-external', (event, url) => {
   shell.openExternal(url);
 });
+
+// ── Auto-update: בדיקת GitHub Release ───────────────────────────────────────
+const CURRENT_VERSION = app.getVersion(); // מגיע מ-package.json
+const GITHUB_RELEASES_API = 'https://api.github.com/repos/giamatamat2013/Warp-desktop/releases/latest';
+
+function checkForUpdates() {
+  const req = https.get(
+    GITHUB_RELEASES_API,
+    { headers: { 'User-Agent': 'WARP-Desktop' } },
+    res => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        try {
+          const release = JSON.parse(data);
+          const latest = (release.tag_name || '').replace(/^v/, '');
+          const current = CURRENT_VERSION.replace(/^v/, '');
+          if (latest && latest !== current) {
+            // שלח לחלון הראשי
+            const win = BrowserWindow.getAllWindows()[0];
+            if (win) win.webContents.send('update-available', { version: latest, url: release.html_url });
+          }
+        } catch (e) { console.warn('[WARP] checkForUpdates parse error:', e.message); }
+      });
+    }
+  );
+  req.on('error', e => console.warn('[WARP] checkForUpdates error:', e.message));
+  req.setTimeout(10000, () => req.destroy());
+}
+
+// ── רענון משחקים שמורים אופליין ──────────────────────────────────────────────
+async function refreshSavedGames() {
+  let saved;
+  try { saved = JSON.parse(fs.readFileSync(SAVED_GAMES_PATH, 'utf8')); } catch { return; }
+  if (!saved.length) return;
+
+  let changed = false;
+  for (const game of saved) {
+    if (!game.url || !game.localPath) continue;
+    try {
+      await downloadFile(game.url, game.localPath);
+      game.cachedAt = Date.now();
+      changed = true;
+    } catch (e) {
+      console.warn(`[WARP] refresh failed for ${game.id}:`, e.message);
+    }
+  }
+  if (changed) fs.writeFileSync(SAVED_GAMES_PATH, JSON.stringify(saved, null, 2));
+}
 
 // ── Helper: download file ─────────────────────────────────────────────────────
 function downloadFile(url, dest) {

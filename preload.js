@@ -11,4 +11,6 @@ contextBridge.exposeInMainWorld('warp', {
   windowMaximize:    ()       => ipcRenderer.invoke('window-maximize'),
   windowClose:       ()       => ipcRenderer.invoke('window-close'),
   isMaximized:       ()       => ipcRenderer.invoke('is-maximized'),
+  openExternal:      (url)    => ipcRenderer.invoke('open-external', url),
+  onUpdateAvailable: (cb)     => ipcRenderer.on('update-available', (_, data) => cb(data)),
 });
