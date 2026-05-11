@@ -1,5 +1,7 @@
-name: Build Linux
+name: Build WARP Desktop
+
 on: [push]
+
 jobs:
   build-linux:
     runs-on: ubuntu-latest
@@ -10,7 +12,28 @@ jobs:
           node-version: 18
       - run: npm install
       - run: npm run build:linux
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
       - uses: actions/upload-artifact@v4
         with:
           name: linux-build
-          path: dist/*.AppImage
+          path: dist/*.deb
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: npm install
+      - run: npm run build:win
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: |
+            dist/*.exe
+            !dist/win-unpacked/**
